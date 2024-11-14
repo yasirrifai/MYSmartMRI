@@ -46,7 +46,7 @@ requirements.txt
 *.jpg
 *.jpeg
 *.png
-
+*.DS_Store
 # Ignore general environment variable files
 .env
 
