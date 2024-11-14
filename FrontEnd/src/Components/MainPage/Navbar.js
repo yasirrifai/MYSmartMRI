@@ -1,5 +1,6 @@
 import React from 'react';
 import logo from '../../assets/MYSmartMRI.png';
+import { Link } from 'react-router-dom';
 
 
 function Navbar() {
@@ -11,7 +12,7 @@ function Navbar() {
           <a href="#about" className="text-gray-600">About Us</a>
           <a href="#services" className="text-gray-600">Service</a>
           <a href="#contact" className="text-gray-600">Contact Us</a>
-          <a href="#login" className="text-gray-600">Login</a>
+          <Link to="/login" className="text-gray-600">Login</Link>
         </nav>
       </header>
   );

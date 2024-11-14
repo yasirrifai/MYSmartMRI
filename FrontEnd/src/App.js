@@ -11,16 +11,17 @@ import Hero from './Components/MainPage/Hero';
 import WhoWeAre from './Components/MainPage/WhoWeAre';
 import PartneringHospitals from './Components/MainPage/PartneringHospitals';
 import Goals from './Components/MainPage/Goals';
-import Feedback from './Components/MainPage/FeedBack';
 import Team from './Components/MainPage/Team';
-import Contact from './Components/MainPage/Contact';
 import Footer from './Components/MainPage/Footer';
+import Authentication from './Components/Admin/Authentication';
+import Contact from './Components/MainPage/Contact';
+import ProtectedRoute from './ProtectedRoutes';
+import Feedback from './Components/MainPage/FeedBack';
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Main Website Routes */}
         <Route
           path="/"
           element={
@@ -37,10 +38,8 @@ function App() {
             </div>
           }
         />
-        
-
-        {/* Admin Dashboard Routes */}
-        <Route path="/admin" element={<DashboardLayout/>}>
+        <Route path="/login" element={<Authentication />} />
+        <Route path="/admin" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="patients" element={<Patients />} />
           <Route path="scans" element={<Scans />} />

@@ -1,4 +1,3 @@
-// components/Admin/Patients.js
 import React from 'react';
 
 function Patients() {
@@ -25,7 +24,6 @@ function Patients() {
             <td className="p-3">Lanka Hospital</td>
             <td className="p-3 text-green-600">Detected</td>
           </tr>
-          {/* More rows as needed */}
         </tbody>
       </table>
     </div>

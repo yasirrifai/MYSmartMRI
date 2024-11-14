@@ -29,7 +29,6 @@ function Reports() {
             <td className="p-3">Lanka Hospital</td>
             <td className="p-3 text-green-600">Download</td>
           </tr>
-          {/* More rows as needed */}
         </tbody>
       </table>
     </div>

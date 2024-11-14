@@ -3,56 +3,77 @@ import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { Dialog, Transition } from '@headlessui/react';
 import logoImg from "../../assets/MYSmartMRI.png"
+import axios from 'axios'
+import Alert from '../Utilis/Alert'; 
 
 function Scans() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [alert, setAlert] = useState(null); 
 
-  // Handle file selection
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file && (file.name.endsWith('.dcm') || file.name.endsWith('.dicom'))) {
       setSelectedFile(file);
-      setAnalysisResult(null); // Clear previous result when a new file is selected
+      setAnalysisResult(null); 
     } else {
-      alert("Please upload a valid DICOM file (.dcm or .dicom).");
-    }
+      setAlert({
+        title: "Invalid File",
+        message: "Please upload a valid DICOM file (.dcm or .dicom).",
+        type: "error",
+      });    }
   };
 
-  // Simulate a scan result
-  const generateMockResult = () => {
-    return {
-      patientName: "John Doe",
-      age: Math.floor(Math.random() * (90 - 20 + 1)) + 20, // Random age between 20 and 90
-      sex: Math.random() > 0.5 ? "Male" : "Female",
-      sequenceType: "T2-weighted",
-      diseease: "Brain Tumor",
-      diseaseProbability: (Math.random() * 100).toFixed(2), // 
-      confidenceLevel: `${(Math.random() * (90 - 70) + 70).toFixed(2)}%` // Confidence between 70-90%Random probability between 0 and 100%
-    };
-  };
-
-  // Handle the scan button click
-  const handleScan = () => {
+  const handleScan = async () => {
     if (!selectedFile) {
-      alert("Please upload a DICOM MRI image before scanning.");
-      return;
+      setAlert({
+        title: "No File Selected",
+        message: "Please upload a DICOM MRI image before scanning.",
+        type: "error",
+      });      return;
     }
-
+  
     setLoading(true);
-    setTimeout(() => {
-      const mockData = generateMockResult(); // Generate mock result data
-      setAnalysisResult(mockData);
-      setIsModalOpen(true); // Open the modal with the mock data
+  
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+  
+    try {
+      const authToken = localStorage.getItem('authToken');
+  
+      if (!authToken) {
+        setAlert({
+          title: "Unauthorized",
+          message: "You must be logged in to perform this action.",
+          type: "error",
+        });        setLoading(false);
+        return;
+      }
+  
+      const response = await axios.post('http://127.0.0.1:5000/predict', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${authToken}`, 
+        },
+      });
+  
+      const resultData = response.data;
+      console.log(resultData);
+      setAnalysisResult(resultData); 
+      setIsModalOpen(true); 
+    } catch (error) {
+      console.error(error);
+      setAlert({
+        title: "Scan Failed",
+        message: "Failed to analyze the DICOM file. Please try again.",
+        type: "error",
+      });    } finally {
       setLoading(false);
-    }, 1000); // Simulate a short delay
+    }
   };
-
-  // Generate PDF Report
-  // Import jsPDF
-
+  
 
   const handleDownloadPDF = () => {
     if (!analysisResult) return;
@@ -60,12 +81,10 @@ function Scans() {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
   
-    // Function to get the image as Base64
     const getBase64Image = (imgPath, callback) => {
       const img = new Image();
       img.src = imgPath;
-      img.crossOrigin = 'Anonymous'; // Allows cross-origin images
-  
+      img.crossOrigin = 'Anonymous'; 
       img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
@@ -77,47 +96,41 @@ function Scans() {
       };
     };
   
-    // Company Logo Section
     getBase64Image(logoImg, (base64Logo) => {
-      doc.setFillColor(60, 120, 180); // Header background color
-      doc.rect(0, 0, pageWidth, 40, 'F'); // Header background rectangle
-      doc.addImage(base64Logo, 'PNG', 10, 5, 20, 20); // Logo at top-left
+      doc.setFillColor(60, 120, 180); 
+      doc.rect(0, 0, pageWidth, 40, 'F'); 
+      doc.addImage(base64Logo, 'PNG', 10, 5, 20, 20); 
       doc.setFontSize(20);
       doc.setTextColor(255, 255, 255);
       doc.text("MRI Analysis Report", 40, 15);
       doc.setFontSize(12);
       doc.text("Original", 40, 25);
   
-      // Patient Demographics Section
-      doc.setTextColor(0, 0, 0); // Black text
+      doc.setTextColor(0, 0, 0); 
       doc.setFontSize(14);
       doc.text("Patient Demographics", 10, 50);
   
       doc.setFontSize(12);
       doc.autoTable({
         startY: 55,
-        margin: { left: 15, right: 15 }, // Margin for consistent layout
+        margin: { left: 15, right: 15 }, 
         styles: { fontSize: 10, cellPadding: 2 },
         body: [
-          ["Name", analysisResult.patientName, "Gender", analysisResult.sex],
+          ["Name", analysisResult.PatientInfo.Name, "Gender", analysisResult.PatientInfo.Sex],
           ["ID No.", "1234565", "Date of Birth", "March 9, 1989"],
-          ["Visit No.", "2024-10-01-001", "Age", analysisResult.age],
+          ["Visit No.", "2024-10-01-001", "Age", analysisResult.PatientInfo.Age],
           ["Location", "MRI Ward", "Nationality", "Not Provided"],
         ],
         theme: 'grid',
       });
   
-      // Additional Information Rows
-      doc.setFillColor(230, 230, 230); // Light gray background for info boxes
+      doc.setFillColor(230, 230, 230); 
       doc.rect(15, doc.autoTable.previous.finalY + 5, pageWidth - 30, 10, 'F');
       doc.setTextColor(0, 0, 0);
       doc.text("Allergies: None reported", 20, doc.autoTable.previous.finalY + 12);
   
-    //   doc.rect(15, doc.autoTable.previous.finalY + 15, pageWidth - 30, 10, 'F');
-    //   doc.text("Medical Alerts: None reported", 20, doc.autoTable.previous.finalY + 22);
-  
-      // Medical / Surgical / Family History Section
-      doc.setFillColor(60, 120, 180); // Section background color
+
+      doc.setFillColor(60, 120, 180); 
       doc.rect(0, doc.autoTable.previous.finalY + 30, pageWidth, 10, 'F');
       doc.setTextColor(255, 255, 255);
       doc.text("Medical Details", 10, doc.autoTable.previous.finalY + 37);
@@ -138,14 +151,13 @@ function Scans() {
           ["Secondary Diagnosis", "Cerebral Edema"],
           ["Other Diagnosis", "Intracranial Pressure"],
           ["Predicted Diagnosis", "Vascular Dementia (Early Stage)"],
-          ["Disease Probability", analysisResult.diseaseProbability],
-          ["Confidence level", analysisResult.confidenceLevel],
+          ["Disease Probability", analysisResult.Prediction.Disease.Confidence],
+          ["Confidence level", analysisResult.Prediction.Sequence.Confidence],
         ],
         theme: 'grid',
       });
   
-      // Clinical Summary Section
-      doc.setFillColor(230, 230, 230); // Gray background for Clinical Summary
+      doc.setFillColor(230, 230, 230);
       doc.rect(15, doc.autoTable.previous.finalY + 10, pageWidth - 30, 10, 'F');
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
@@ -159,8 +171,7 @@ function Scans() {
         { maxWidth: pageWidth - 30 }
       );
   
-      // Discharge / Report Summary Section
-      doc.setFillColor(60, 120, 180); // Section header color
+      doc.setFillColor(60, 120, 180); 
       doc.rect(0, doc.autoTable.previous.finalY + 60, pageWidth, 10, 'F');
       doc.setTextColor(255, 255, 255);
       doc.text("Report Summary", 10, doc.autoTable.previous.finalY + 67);
@@ -170,13 +181,11 @@ function Scans() {
       doc.text(`Date of Issue: October 30, 2024`, 15, doc.autoTable.previous.finalY + 80);
       doc.text(`Condition at Discharge: Stable`, 15, doc.autoTable.previous.finalY + 90);
   
-      // Footer
       doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
       doc.text("1-800-765-7678 // 1500 San Pablo Street", 15, 285);
       doc.text("Page 1", pageWidth - 20, 285);
   
-      // Save the PDF
       doc.save("MRI_Analysis_Report.pdf");
     });
   };
@@ -185,10 +194,18 @@ function Scans() {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <h1 className="text-3xl font-bold mb-4">Upload and Scan</h1>
+      {alert && (
+        <Alert
+          title={alert.title}
+          message={alert.message}
+          type={alert.type}
+          onDismiss={() => setAlert(null)}
+        />
+      )}
       <div className="flex items-center space-x-4">
         <input
           type="file"
-          accept=".dcm,.dicom" // Restrict file types to .dcm and .dicom
+          accept=".dcm,.dicom" 
           onChange={handleFileChange}
           className="border border-gray-300 p-2 rounded-lg"
         />
@@ -201,7 +218,6 @@ function Scans() {
         </button>
       </div>
 
-      {/* Modal for displaying analysis result */}
       <Transition appear show={isModalOpen} as={Fragment}>
         <Dialog as="div" className="relative z-10" onClose={() => setIsModalOpen(false)}>
           <Transition.Child
@@ -232,13 +248,13 @@ function Scans() {
                     MRI Analysis Report
                   </Dialog.Title>
                   <div className="mt-4">
-                    <p><strong>Patient Name/ID:</strong> {analysisResult?.patientName}</p>
-                    <p><strong>Age:</strong> {analysisResult?.age}</p>
-                    <p><strong>Sex:</strong> {analysisResult?.sex}</p>
-                    <p><strong>MRI Sequence Type:</strong> {analysisResult?.sequenceType}</p>
-                    <p><strong>Disease:</strong> {analysisResult?.diseease}</p>
-                    <p><strong>Disease Probability:</strong> {analysisResult?.diseaseProbability}%</p>
-                    <p><strong>Confidence Level:</strong> {analysisResult?.confidenceLevel}</p>
+                    <p><strong>Patient Name/ID:</strong> {analysisResult?.PatientInfo?.Name || " Not Mentioned"} </p>
+                    <p><strong>Age:</strong> {analysisResult?.PatientInfo?.Age || " Not Mentioned"}</p>
+                    <p><strong>Sex:</strong> {analysisResult?.PatientInfo?.Sex || " Not Mentioned"}</p>
+                    <p><strong>MRI Sequence Type:</strong> {analysisResult?.Prediction?.Sequence?.Name                    }</p>
+                    <p><strong>Disease:</strong> {analysisResult?.Prediction?.Disease?.Name}</p>
+                    <p><strong>Disease Probability:</strong> {analysisResult?.Prediction?.Disease?.Confidence}%</p>
+                    <p><strong>Confidence Level:</strong> {analysisResult?.Prediction?.Sequence?.Confidence}</p>
 
                   </div>
 
