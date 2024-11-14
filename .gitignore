@@ -72,3 +72,4 @@ train/
 
 node_modules/
 venv/
+myenv/
